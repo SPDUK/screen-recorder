@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu, Tray } from 'electron'
 
 /**
  * Set `__static` path to static files in production
@@ -15,6 +15,8 @@ const winURL = process.env.NODE_ENV === 'development'
   ? `http://localhost:9080`
   : `file://${__dirname}/index.html`
 
+let tray = null
+
 function createWindow () {
   /**
    * Initial window options
@@ -22,6 +24,9 @@ function createWindow () {
   mainWindow = new BrowserWindow({
     height: 563,
     useContentSize: true,
+    transparent: true,
+    resizable: true,
+    frame: false,
     width: 1000
   })
 
@@ -30,9 +35,20 @@ function createWindow () {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
+
+  tray = new Tray('./build/icons/256x256.png')
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Quit', type: 'radio', click: () => app.quit() }
+  ])
+
+  tray.setToolTip('This is my application.')
+  tray.setContextMenu(contextMenu)
 }
 
-app.on('ready', createWindow)
+// TODO: check why this is needed and if it can be done another way?
+app.on('ready', () => {
+  setTimeout(createWindow, 100)
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
