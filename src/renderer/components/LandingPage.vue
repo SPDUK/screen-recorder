@@ -3,113 +3,134 @@
     <div class="draggable">
       <h4>Drag Window</h4>
     </div>
-    <button @click="startRecording">Start Recording</button>
-    <button @click="stopRecording">Stop Recording</button>
-    <button id="screen-shot" @click="setRecordingArea">Select Recording Area</button>
-    <div id="screenshot-path"></div>
+    <!-- <button @click="startRecording">Start Recording</button> -->
+    <!-- <button @click="stopRecording">Stop Recording</button> -->
     Current recording state: {{recording}}
+ 
+
+    <video></video>
+
+    <button id="startBtn" @click="startRecording" class="button is-primary">Start</button>
+    <button id="stopBtn" @click="stopRecording" class="button is-warning">Stop</button>
+
+    <hr />
+
+
   </div>
 </template>
 <script>
-const fs = require('fs')
-const { desktopCapturer } = require('electron')
-
-var blobs = []
+const { writeFile } = require('fs')
+const { desktopCapturer, remote } = require('electron')
+const { dialog } = remote
 
 export default {
   name: 'landing-page',
   data () {
     return {
       recording: false,
-      recorder: {}
+      mediaRecorder: {},
+      recordedChunks: []
     }
   },
+
+  mounted () {
+    this.selectSource()
+  },
+
   methods: {
-    setRecordingArea (e) {
-      // console.log(fs)
-    },
 
     startRecording () {
-      this.recording = true
-      var title = document.title
+      const startBtn = document.getElementById('startBtn')
 
-      desktopCapturer.getSources({ types: ['screen'] }, (error, sources) => {
-        console.log(sources)
-        if (error) throw error
-        for (let i = 0; i < sources.length; i++) {
-          let src = sources[i]
-          document.title = title
+      this.mediaRecorder.start()
+      startBtn.innerText = 'Recording'
+    },
 
-          navigator.webkitGetUserMedia({
+    stopRecording () {
+      const startBtn = document.getElementById('startBtn')
+
+      startBtn.innerText = 'Not Recording'
+
+      this.mediaRecorder.stop()
+    },
+
+    // Saves the video file on stop
+    async  handleStop (e) {
+      const blob = new Blob(this.recordedChunks, {
+        type: 'video/webm; codecs=vp9'
+      })
+
+      const buffer = Buffer.from(await blob.arrayBuffer())
+
+      const { filePath } = await dialog.showSaveDialog({
+
+        buttonLabel: 'Save video',
+        defaultPath: `vid-${Date.now()}.webm`
+      })
+
+      console.log(filePath)
+
+      writeFile(filePath, buffer, () => console.log('video saved successfully!'))
+    },
+
+    handleDataAvailable (e) {
+      console.log('video data available')
+      this.recordedChunks.push(e.data)
+    },
+    // Change the videoSource window to record
+    // Get the available video sources
+
+    async selectSource () {
+      const sources = await desktopCapturer.getSources({ types: ['screen'] })
+
+      for (const source of sources) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: {
               mandatory: {
                 chromeMediaSource: 'desktop',
-                chromeMediaSourceId: src.id,
-                minWidth: 800,
-                maxWidth: 1280,
-                minHeight: 600,
-                maxHeight: 720
+                chromeMediaSourceId: source.id,
+                minWidth: 400,
+                maxWidth: 400,
+                minHeight: 400,
+                maxHeight: 400
               }
             }
-          }, this.handleStream, this.handleUserMediaError)
+          })
+
+          console.log(stream)
+          this.handleStream(stream)
+
+          const videoElement = document.querySelector('video')
+          // Preview the source in a video element
+          videoElement.srcObject = stream
+          videoElement.play()
+
+          // Create the Media Recorder
+          const options = { mimeType: 'video/webm; codecs=vp9' }
+          this.mediaRecorder = new MediaRecorder(stream, options)
+
+          console.log('____')
+          console.log(this.mediaRecorder)
+
+          console.log('____')
+
+          // Register Event Handlers
+          this.mediaRecorder.ondataavailable = this.handleDataAvailable
+          this.mediaRecorder.onstop = this.handleStop
+        } catch (e) {
+          console.log(e)
         }
-      })
+      }
     },
 
     handleStream (stream) {
-      console.log('handling stream')
-      this.recorder = new MediaRecorder(stream)
-      console.log(this.recorder)
-      blobs = []
-      this.recorder.ondataavailable = (event) => {
-        blobs.push(event.data)
+      this.mediaRecorder.ondataavailable = event => {
+        this.blobs.push(event.data)
       }
-      this.recorder.start()
-    },
-
-    stopRecording () {
-      console.log('stopping...')
-      this.recording = false
-      this.recorder.stop()
-      this.toArrayBuffer(new Blob(blobs, {type: 'video/webm'}), (ab) => {
-        var buffer = this.toBuffer(ab)
-        var file = `./videos/example.webm`
-        fs.writeFile(file, buffer, (err) => {
-          if (err) {
-            console.error('Failed to save video ' + err)
-          } else {
-            console.log('Saved video: ' + file)
-          }
-        })
-      })
-    },
-
-    handleUserMediaError (e) {
-      console.error('handleUserMediaError', e)
-    },
-    toArrayBuffer (blob, cb) {
-      let fileReader = new FileReader()
-      fileReader.onload = function () {
-        let arrayBuffer = this.result
-        cb(arrayBuffer)
-      }
-      fileReader.readAsArrayBuffer(blob)
-    },
-
-    toBuffer (ab) {
-      let buffer = Buffer.alloc(ab.byteLength)
-      let arr = new Uint8Array(ab)
-      for (let i = 0; i < arr.byteLength; i++) {
-        buffer[i] = arr[i]
-      }
-      return buffer
     }
 
-  },
-  mounted () {
-    this.startRecording()
-    setTimeout(() => { this.stopRecording() }, 2000)
   }
 }
 </script>
@@ -145,7 +166,6 @@ body {
     margin-left: auto;
   }
 }
-
 
 .titlebar {
   -webkit-user-select: none;
