@@ -26,8 +26,11 @@ function createWindow () {
     useContentSize: true,
     transparent: true,
     resizable: true,
-    frame: false,
-    width: 1000
+    // frame: false,
+    width: 1000,
+    webPreferences: {
+      nodeIntegration: true
+    }
   })
 
   mainWindow.loadURL(winURL)
