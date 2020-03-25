@@ -8,7 +8,7 @@
     Current recording state: {{recording}}
  
 
-    <video></video>
+    <video ref="video"></video>
 
     <button v-show="!recording" @click="startRecording">Start Recording</button>
     <button v-show="recording"  @click="stopRecording">Stop Recording</button>
@@ -96,7 +96,7 @@ export default {
           console.log(stream)
           this.handleStream(stream)
 
-          const videoElement = document.querySelector('video')
+          const videoElement = this.$refs['video']
           // Preview the source in a video element
           videoElement.srcObject = stream
           videoElement.play()
