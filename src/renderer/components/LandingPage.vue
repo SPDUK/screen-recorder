@@ -10,8 +10,8 @@
 
     <video></video>
 
-    <button id="startBtn" @click="startRecording" class="button is-primary">Start</button>
-    <button id="stopBtn" @click="stopRecording" class="button is-warning">Stop</button>
+    <button v-show="!recording" @click="startRecording">Start Recording</button>
+    <button v-show="recording"  @click="stopRecording">Stop Recording</button>
 
     <hr />
 
@@ -36,21 +36,15 @@ export default {
   mounted () {
     this.selectSource()
   },
-
   methods: {
 
     startRecording () {
-      const startBtn = document.getElementById('startBtn')
-
+      this.recording = true
       this.mediaRecorder.start()
-      startBtn.innerText = 'Recording'
     },
 
     stopRecording () {
-      const startBtn = document.getElementById('startBtn')
-
-      startBtn.innerText = 'Not Recording'
-
+      this.recording = false
       this.mediaRecorder.stop()
     },
 
